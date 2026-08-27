@@ -13,13 +13,24 @@ export function ApiKeyCreateForm({
 
   return (
     <div className="flex flex-col gap-3">
-      <form action={formAction} className="flex gap-2">
+      <form action={formAction} className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <input
           name="name"
           required
           placeholder="e.g. CI pipeline"
           className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900"
         />
+        <div className="flex items-center gap-3 text-sm text-gray-600">
+          <input type="hidden" name="scopes" value="read" />
+          <label className="flex items-center gap-1 opacity-60">
+            <input type="checkbox" checked readOnly />
+            read
+          </label>
+          <label className="flex items-center gap-1">
+            <input type="checkbox" name="scopes" value="write" />
+            write
+          </label>
+        </div>
         <button
           type="submit"
           disabled={isPending}

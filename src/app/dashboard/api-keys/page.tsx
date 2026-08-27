@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getActiveMembership } from "@/lib/org";
-import { createApiKey } from "@/lib/api-keys";
+import { createApiKey, type ApiKeyScope } from "@/lib/api-keys";
 import { ApiKeyCreateForm } from "@/components/api-key-create-form";
 
 async function createKey(_prevState: { key?: string; error?: string }, formData: FormData) {
@@ -20,10 +20,13 @@ async function createKey(_prevState: { key?: string; error?: string }, formData:
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { error: "Name is required" };
 
+  const scopes = formData.getAll("scopes") as ApiKeyScope[];
+
   const { key } = await createApiKey({
     organizationId: membership.organizationId,
     name,
     createdByEmail: session.user.email ?? "",
+    scopes,
   });
 
   revalidatePath("/dashboard/api-keys");
@@ -67,7 +70,8 @@ export default async function ApiKeysPage() {
       <h1 className="text-2xl font-semibold">API keys</h1>
       <p className="text-sm text-gray-600">
         Use a key as a bearer token: <code>Authorization: Bearer sk_live_...</code> against{" "}
-        <code>/api/v1/*</code> routes.
+        <code>/api/v1/*</code> routes. Keys are limited to{" "}
+        {process.env.API_KEY_RATE_LIMIT_PER_MINUTE ?? 60} requests/minute.
       </p>
 
       {canManage && (
@@ -83,7 +87,9 @@ export default async function ApiKeysPage() {
           {keys.map((apiKey) => (
             <div key={apiKey.id} className="flex items-center justify-between px-4 py-3">
               <div>
-                <p className="text-sm font-medium">{apiKey.name}</p>
+                <p className="text-sm font-medium">
+                  {apiKey.name} <span className="text-gray-400">· {apiKey.scopes.join(", ")}</span>
+                </p>
                 <p className="text-xs text-gray-500">
                   <code>{apiKey.keyPrefix}…</code> · created {apiKey.createdAt.toLocaleDateString()}
                   {apiKey.lastUsedAt && ` · last used ${apiKey.lastUsedAt.toLocaleDateString()}`}

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getOrganizationForApiKey } from "@/lib/api-keys";
+import { authenticateApiKey } from "@/lib/api-keys";
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization") ?? "";
@@ -9,12 +9,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Missing Authorization: Bearer <key> header" }, { status: 401 });
   }
 
-  const organization = await getOrganizationForApiKey(key);
-  if (!organization) {
-    return NextResponse.json({ error: "Invalid or revoked API key" }, { status: 401 });
+  const auth = await authenticateApiKey(key, { requiredScope: "read" });
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  return NextResponse.json({
-    organization: { id: organization.id, name: organization.name, slug: organization.slug },
-  });
+  return NextResponse.json({ organization: auth.organization });
 }

@@ -1,14 +1,12 @@
-import crypto from "crypto";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getActiveMembership } from "@/lib/org";
-import { sendInviteEmail } from "@/lib/email";
+import { createInvitation } from "@/lib/invitations";
+import { resolveAppUrl } from "@/lib/url";
 import { MemberRoleSelect } from "@/components/member-role-select";
-
-const INVITE_EXPIRY_DAYS = 7;
 
 async function inviteMember(formData: FormData) {
   "use server";
@@ -19,50 +17,16 @@ async function inviteMember(formData: FormData) {
   const membership = await getActiveMembership(session.user.id);
   if (!membership || membership.role === "MEMBER") return;
 
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const email = String(formData.get("email") ?? "");
   const role = formData.get("role") === "ADMIN" ? "ADMIN" : "MEMBER";
-  if (!email) return;
 
-  const existingUser = await prisma.user.findUnique({ where: { email } });
-  if (existingUser) {
-    const alreadyMember = await prisma.organizationMember.findUnique({
-      where: {
-        userId_organizationId: {
-          userId: existingUser.id,
-          organizationId: membership.organizationId,
-        },
-      },
-    });
-    if (alreadyMember) return;
-  }
-
-  const token = crypto.randomBytes(24).toString("hex");
-  const expiresAt = new Date(Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
-
-  await prisma.invitation.upsert({
-    where: { email_organizationId: { email, organizationId: membership.organizationId } },
-    create: {
-      email,
-      organizationId: membership.organizationId,
-      role,
-      token,
-      invitedByEmail: session.user.email ?? "",
-      expiresAt,
-    },
-    update: { token, role, expiresAt },
-  });
-
-  const host = (await headers()).get("host");
-  const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
-  const inviteUrl = process.env.NEXT_PUBLIC_APP_URL
-    ? `${process.env.NEXT_PUBLIC_APP_URL}/invite/${token}`
-    : `${protocol}://${host}/invite/${token}`;
-
-  await sendInviteEmail({
-    to: email,
-    orgName: membership.organization.name,
+  await createInvitation({
+    organizationId: membership.organizationId,
+    organizationName: membership.organization.name,
+    email,
+    role,
     invitedByEmail: session.user.email ?? "",
-    inviteUrl,
+    appUrl: await resolveAppUrl(),
   });
 
   revalidatePath("/dashboard/team");

@@ -121,12 +121,25 @@ model ApiKey {
   name           String
   keyPrefix      String
   keyHash        String    @unique
+  scopes         String[]  @default(["read"])
   createdByEmail String
   lastUsedAt     DateTime?
   revokedAt      DateTime?
   createdAt      DateTime  @default(now())
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  usageWindows ApiKeyUsage[]
+}
+
+model ApiKeyUsage {
+  id          String   @id @default(cuid())
+  apiKeyId    String
+  windowStart DateTime
+  count       Int      @default(0)
+
+  apiKey ApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  @@unique([apiKeyId, windowStart])
 }
 
 model Invitation {
