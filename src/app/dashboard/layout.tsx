@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getActiveMembership, listMemberships } from "@/lib/org";
+import { isSuperAdmin } from "@/lib/admin";
 import { SignOutButton } from "@/components/sign-out-button";
 import { OrgSwitcher } from "@/components/org-switcher";
 
@@ -42,12 +43,20 @@ export default async function DashboardLayout({
             <Link href="/dashboard/billing" className="rounded-md px-3 py-2 hover:bg-gray-100">
               Billing
             </Link>
+            <Link href="/dashboard/api-keys" className="rounded-md px-3 py-2 hover:bg-gray-100">
+              API keys
+            </Link>
             <Link
               href="/dashboard/settings"
               className="rounded-md px-3 py-2 hover:bg-gray-100"
             >
               Settings
             </Link>
+            {isSuperAdmin(session.user.email) && (
+              <Link href="/admin" className="rounded-md px-3 py-2 hover:bg-gray-100">
+                Platform admin
+              </Link>
+            )}
           </nav>
         </div>
 
