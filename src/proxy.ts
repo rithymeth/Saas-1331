@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { isSuperAdmin } from "@/lib/admin";
 import { NextResponse } from "next/server";
 
 export default auth((req) => {
@@ -7,8 +8,12 @@ export default auth((req) => {
     loginUrl.searchParams.set("callbackUrl", req.nextUrl.pathname);
     return NextResponse.redirect(loginUrl);
   }
+
+  if (req.nextUrl.pathname.startsWith("/admin") && !isSuperAdmin(req.auth.user?.email)) {
+    return NextResponse.redirect(new URL("/dashboard", req.nextUrl.origin));
+  }
 });
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: ["/dashboard/:path*", "/admin/:path*"],
 };
