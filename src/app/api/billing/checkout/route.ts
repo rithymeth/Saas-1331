@@ -2,14 +2,15 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getActiveMembership } from "@/lib/org";
-import { stripe, STRIPE_PRICE_ID } from "@/lib/stripe";
+import { stripe } from "@/lib/stripe";
+import { PLANS, getPlan } from "@/lib/plans";
 
 function appUrl(request: Request) {
   return process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
 }
 
 export async function POST(request: Request) {
-  if (!stripe || !STRIPE_PRICE_ID) {
+  if (!stripe || PLANS.length === 0) {
     return NextResponse.json({ error: "Billing is not configured" }, { status: 501 });
   }
 
@@ -22,6 +23,9 @@ export async function POST(request: Request) {
   if (!membership || membership.role === "MEMBER") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+
+  const body = await request.json().catch(() => ({}));
+  const plan = getPlan(String(body.planId ?? "")) ?? PLANS[0];
 
   const existing = await prisma.subscription.findUnique({
     where: { organizationId: membership.organizationId },
@@ -47,7 +51,7 @@ export async function POST(request: Request) {
   const checkoutSession = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customerId,
-    line_items: [{ price: STRIPE_PRICE_ID, quantity: 1 }],
+    line_items: [{ price: plan.priceId, quantity: 1 }],
     success_url: `${base}/dashboard/billing?success=1`,
     cancel_url: `${base}/dashboard/billing?canceled=1`,
     client_reference_id: membership.organizationId,

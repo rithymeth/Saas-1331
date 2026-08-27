@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getActiveMembership } from "@/lib/org";
+import { PLANS, getPlanByPriceId } from "@/lib/plans";
 import { SubscribeButton, ManageBillingButton } from "@/components/billing-buttons";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -31,8 +32,9 @@ export default async function BillingPage({
     where: { organizationId: membership.organizationId },
   });
 
-  const billingConfigured = Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PRICE_ID);
+  const billingConfigured = PLANS.length > 0;
   const isActive = subscription?.status === "ACTIVE" || subscription?.status === "TRIALING";
+  const currentPlan = getPlanByPriceId(subscription?.stripePriceId);
   const canManage = membership.role !== "MEMBER";
 
   return (
@@ -52,15 +54,20 @@ export default async function BillingPage({
 
       {!billingConfigured ? (
         <p className="text-sm text-gray-500">
-          Billing isn&apos;t configured yet. Set <code>STRIPE_SECRET_KEY</code> and{" "}
-          <code>STRIPE_PRICE_ID</code> to enable subscriptions.
+          Billing isn&apos;t configured yet. Set <code>STRIPE_SECRET_KEY</code> and at least one of{" "}
+          <code>STRIPE_PRICE_STARTER</code>/<code>STRIPE_PRICE_PRO</code> (or <code>STRIPE_PRICE_ID</code>)
+          to enable subscriptions.
         </p>
       ) : (
         <div className="flex flex-col gap-3 rounded-md border border-gray-200 p-4">
           <div>
             <p className="text-sm font-medium text-gray-500">Plan status</p>
             <p className="text-lg">
-              {subscription ? STATUS_LABEL[subscription.status] ?? subscription.status : "No subscription"}
+              {subscription
+                ? `${STATUS_LABEL[subscription.status] ?? subscription.status}${
+                    currentPlan ? ` — ${currentPlan.name}` : ""
+                  }`
+                : "No subscription"}
             </p>
             {subscription?.currentPeriodEnd && (
               <p className="text-xs text-gray-500">
@@ -71,7 +78,18 @@ export default async function BillingPage({
           </div>
 
           {canManage ? (
-            isActive ? <ManageBillingButton /> : <SubscribeButton />
+            isActive ? (
+              <ManageBillingButton />
+            ) : (
+              <div className="flex flex-col gap-2">
+                {PLANS.map((plan) => (
+                  <div key={plan.id} className="flex items-center justify-between">
+                    <span className="text-sm">{plan.name}</span>
+                    <SubscribeButton planId={plan.id} label={`Subscribe to ${plan.name}`} />
+                  </div>
+                ))}
+              </div>
+            )
           ) : (
             <p className="text-xs text-gray-500">Only owners and admins can manage billing.</p>
           )}

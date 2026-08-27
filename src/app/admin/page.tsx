@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 
 export default async function AdminOrganizationsPage() {
@@ -18,7 +19,9 @@ export default async function AdminOrganizationsPage() {
         {organizations.map((org) => (
           <div key={org.id} className="flex items-center justify-between px-4 py-3">
             <div>
-              <p className="text-sm font-medium">{org.name}</p>
+              <Link href={`/admin/organizations/${org.id}`} className="text-sm font-medium hover:underline">
+                {org.name}
+              </Link>
               <p className="text-xs text-gray-500">
                 {org.slug} · {org._count.members} member{org._count.members === 1 ? "" : "s"} ·
                 created {org.createdAt.toLocaleDateString()}
