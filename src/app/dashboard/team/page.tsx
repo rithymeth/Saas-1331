@@ -4,16 +4,11 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getActiveMembership } from "@/lib/org";
+import { sendInviteEmail } from "@/lib/email";
 import { MemberRoleSelect } from "@/components/member-role-select";
 
 const INVITE_EXPIRY_DAYS = 7;
-
-async function getMembership(userId: string) {
-  return prisma.organizationMember.findFirst({
-    where: { userId },
-    orderBy: { createdAt: "asc" },
-  });
-}
 
 async function inviteMember(formData: FormData) {
   "use server";
@@ -21,7 +16,7 @@ async function inviteMember(formData: FormData) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const membership = await getMembership(session.user.id);
+  const membership = await getActiveMembership(session.user.id);
   if (!membership || membership.role === "MEMBER") return;
 
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
@@ -57,6 +52,19 @@ async function inviteMember(formData: FormData) {
     update: { token, role, expiresAt },
   });
 
+  const host = (await headers()).get("host");
+  const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
+  const inviteUrl = process.env.NEXT_PUBLIC_APP_URL
+    ? `${process.env.NEXT_PUBLIC_APP_URL}/invite/${token}`
+    : `${protocol}://${host}/invite/${token}`;
+
+  await sendInviteEmail({
+    to: email,
+    orgName: membership.organization.name,
+    invitedByEmail: session.user.email ?? "",
+    inviteUrl,
+  });
+
   revalidatePath("/dashboard/team");
 }
 
@@ -66,7 +74,7 @@ async function revokeInvitation(formData: FormData) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const membership = await getMembership(session.user.id);
+  const membership = await getActiveMembership(session.user.id);
   if (!membership || membership.role === "MEMBER") return;
 
   const invitationId = String(formData.get("invitationId") ?? "");
@@ -83,7 +91,7 @@ async function removeMember(formData: FormData) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const membership = await getMembership(session.user.id);
+  const membership = await getActiveMembership(session.user.id);
   if (!membership || membership.role === "MEMBER") return;
 
   const memberId = String(formData.get("memberId") ?? "");
@@ -102,7 +110,7 @@ async function updateMemberRole(formData: FormData) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const membership = await getMembership(session.user.id);
+  const membership = await getActiveMembership(session.user.id);
   if (!membership || membership.role !== "OWNER") return;
 
   const memberId = String(formData.get("memberId") ?? "");
@@ -121,7 +129,7 @@ export default async function TeamPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const membership = await getMembership(session.user.id);
+  const membership = await getActiveMembership(session.user.id);
   if (!membership) redirect("/dashboard");
 
   const [members, invitations, host] = await Promise.all([

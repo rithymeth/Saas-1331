@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getActiveMembership, listMemberships } from "@/lib/org";
 import { SignOutButton } from "@/components/sign-out-button";
+import { OrgSwitcher } from "@/components/org-switcher";
 
 export default async function DashboardLayout({
   children,
@@ -12,11 +13,10 @@ export default async function DashboardLayout({
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const membership = await prisma.organizationMember.findFirst({
-    where: { userId: session.user.id },
-    include: { organization: true },
-    orderBy: { createdAt: "asc" },
-  });
+  const [membership, memberships] = await Promise.all([
+    getActiveMembership(session.user.id),
+    listMemberships(session.user.id),
+  ]);
 
   return (
     <div className="flex flex-1">
@@ -26,7 +26,10 @@ export default async function DashboardLayout({
             <p className="text-xs uppercase tracking-wide text-gray-400">
               Organization
             </p>
-            <p className="font-medium">{membership?.organization.name ?? "—"}</p>
+            <OrgSwitcher
+              organizations={memberships.map((m) => ({ id: m.organizationId, name: m.organization.name }))}
+              activeOrgId={membership?.organizationId ?? ""}
+            />
           </div>
 
           <nav className="flex flex-col gap-1 text-sm">
@@ -35,6 +38,9 @@ export default async function DashboardLayout({
             </Link>
             <Link href="/dashboard/team" className="rounded-md px-3 py-2 hover:bg-gray-100">
               Team
+            </Link>
+            <Link href="/dashboard/billing" className="rounded-md px-3 py-2 hover:bg-gray-100">
+              Billing
             </Link>
             <Link
               href="/dashboard/settings"

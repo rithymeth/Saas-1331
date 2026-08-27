@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getActiveMembership } from "@/lib/org";
 
 async function updateOrgName(formData: FormData) {
   "use server";
@@ -12,10 +13,8 @@ async function updateOrgName(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return;
 
-  const membership = await prisma.organizationMember.findFirst({
-    where: { userId: session.user.id, role: { in: ["OWNER", "ADMIN"] } },
-  });
-  if (!membership) return;
+  const membership = await getActiveMembership(session.user.id);
+  if (!membership || membership.role === "MEMBER") return;
 
   await prisma.organization.update({
     where: { id: membership.organizationId },
@@ -30,11 +29,7 @@ export default async function SettingsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const membership = await prisma.organizationMember.findFirst({
-    where: { userId: session.user.id },
-    include: { organization: true },
-    orderBy: { createdAt: "asc" },
-  });
+  const membership = await getActiveMembership(session.user.id);
 
   return (
     <div className="flex max-w-md flex-col gap-8">
