@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getActiveMembership } from "@/lib/org";
 import { createInvitation } from "@/lib/invitations";
 import { resolveAppUrl } from "@/lib/url";
+import { syncSeatCount } from "@/lib/seats";
 import { MemberRoleSelect } from "@/components/member-role-select";
 
 async function inviteMember(formData: FormData) {
@@ -65,6 +66,7 @@ async function removeMember(formData: FormData) {
   }
 
   await prisma.organizationMember.delete({ where: { id: memberId } });
+  await syncSeatCount(membership.organizationId);
   revalidatePath("/dashboard/team");
 }
 

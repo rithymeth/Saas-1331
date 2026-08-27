@@ -28,6 +28,7 @@ export default async function AdminOrganizationsPage() {
               </p>
             </div>
             <span className="text-xs text-gray-500">
+              {org.suspendedAt && <span className="text-red-600">suspended · </span>}
               {org.subscription ? org.subscription.status : "No subscription"}
             </span>
           </div>

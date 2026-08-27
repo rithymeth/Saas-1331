@@ -28,9 +28,10 @@ export default async function BillingPage({
   const membership = await getActiveMembership(session.user.id);
   if (!membership) redirect("/dashboard");
 
-  const subscription = await prisma.subscription.findUnique({
-    where: { organizationId: membership.organizationId },
-  });
+  const [subscription, seatCount] = await Promise.all([
+    prisma.subscription.findUnique({ where: { organizationId: membership.organizationId } }),
+    prisma.organizationMember.count({ where: { organizationId: membership.organizationId } }),
+  ]);
 
   const billingConfigured = PLANS.length > 0;
   const isActive = subscription?.status === "ACTIVE" || subscription?.status === "TRIALING";
@@ -73,6 +74,11 @@ export default async function BillingPage({
               <p className="text-xs text-gray-500">
                 {subscription.cancelAtPeriodEnd ? "Cancels" : "Renews"} on{" "}
                 {subscription.currentPeriodEnd.toLocaleDateString()}
+              </p>
+            )}
+            {isActive && (
+              <p className="text-xs text-gray-500">
+                Billed for {seatCount} seat{seatCount === 1 ? "" : "s"} (one per team member)
               </p>
             )}
           </div>

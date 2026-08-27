@@ -47,11 +47,15 @@ export async function POST(request: Request) {
     });
   }
 
+  const seats = await prisma.organizationMember.count({
+    where: { organizationId: membership.organizationId },
+  });
+
   const base = appUrl(request);
   const checkoutSession = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customerId,
-    line_items: [{ price: plan.priceId, quantity: 1 }],
+    line_items: [{ price: plan.priceId, quantity: seats }],
     success_url: `${base}/dashboard/billing?success=1`,
     cancel_url: `${base}/dashboard/billing?canceled=1`,
     client_reference_id: membership.organizationId,

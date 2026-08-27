@@ -19,6 +19,19 @@ export default async function DashboardLayout({
     listMemberships(session.user.id),
   ]);
 
+  if (membership?.organization.suspendedAt) {
+    return (
+      <div className="mx-auto flex max-w-sm flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
+        <h1 className="text-xl font-semibold">Organization suspended</h1>
+        <p className="text-sm text-gray-600">
+          {membership.organization.name} has been suspended. Contact support if you believe this
+          is a mistake.
+        </p>
+        <SignOutButton />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-1">
       <aside className="flex w-56 flex-col justify-between border-r border-gray-200 px-4 py-6">
