@@ -6,6 +6,7 @@ import { createUserWithOrganization } from "@/lib/auth";
 import { createToken } from "@/lib/tokens";
 import { sendVerificationEmail } from "@/lib/email";
 import { resolveAppUrl } from "@/lib/url";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -16,6 +17,11 @@ const registerSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const allowed = await checkRateLimit(`register:${getClientIp(request.headers)}`);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
+  }
+
   const body = await request.json().catch(() => null);
   const parsed = registerSchema.safeParse(body);
 

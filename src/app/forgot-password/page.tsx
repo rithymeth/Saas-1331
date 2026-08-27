@@ -1,17 +1,21 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { createToken } from "@/lib/tokens";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { resolveAppUrl } from "@/lib/url";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 
 async function requestReset(formData: FormData) {
   "use server";
 
+  const allowed = await checkRateLimit(`pwreset:${getClientIp(await headers())}`);
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  if (email) {
+
+  if (allowed && email) {
     const user = await prisma.user.findUnique({ where: { email } });
     if (user) {
       const rawToken = await createToken(`pwreset:${email}`, RESET_TOKEN_TTL_MS);
@@ -22,7 +26,8 @@ async function requestReset(formData: FormData) {
     }
   }
 
-  // Always redirect the same way, whether or not the account exists.
+  // Always redirect the same way, whether or not the account exists or the
+  // request was rate-limited — anything else would leak which is which.
   redirect("/forgot-password?sent=1");
 }
 

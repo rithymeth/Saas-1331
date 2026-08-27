@@ -4,6 +4,8 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { jwtCallback } from "@/lib/session";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 const providers: Provider[] = [
   Credentials({
@@ -12,10 +14,13 @@ const providers: Provider[] = [
       email: { label: "Email", type: "email" },
       password: { label: "Password", type: "password" },
     },
-    async authorize(credentials) {
+    async authorize(credentials, request) {
       const email = credentials?.email as string | undefined;
       const password = credentials?.password as string | undefined;
       if (!email || !password) return null;
+
+      const allowed = await checkRateLimit(`login:${getClientIp(request.headers)}`);
+      if (!allowed) return null;
 
       const user = await prisma.user.findUnique({ where: { email } });
       if (!user?.password) return null;
@@ -62,33 +67,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return true;
     },
-    async jwt({ token, user }) {
-      if (user?.email) {
-        const dbUser = await prisma.user.findUnique({ where: { email: user.email } });
-        if (dbUser) {
-          token.userId = dbUser.id;
-          token.emailVerified = !!dbUser.emailVerified;
-          token.passwordChangedAt = dbUser.passwordChangedAt?.getTime() ?? null;
-        }
-        return token;
-      }
-
-      // On every later request, confirm the password hasn't changed since this
-      // token was issued — otherwise a stolen token would keep working even
-      // after the account owner resets their password to lock the thief out.
-      if (token.userId) {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: token.userId as string },
-          select: { passwordChangedAt: true },
-        });
-        if (!dbUser) return null;
-
-        const currentChangedAt = dbUser.passwordChangedAt?.getTime() ?? null;
-        if (currentChangedAt !== (token.passwordChangedAt ?? null)) return null;
-      }
-
-      return token;
-    },
+    jwt: jwtCallback,
     async session({ session, token }) {
       if (session.user && token.userId) {
         session.user.id = token.userId as string;

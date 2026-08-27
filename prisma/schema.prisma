@@ -145,6 +145,15 @@ model ApiKeyUsage {
   @@unique([apiKeyId, scope, windowStart])
 }
 
+model RateLimitBucket {
+  id          String   @id @default(cuid())
+  key         String
+  windowStart DateTime
+  count       Int      @default(0)
+
+  @@unique([key, windowStart])
+}
+
 model Invitation {
   id             String   @id @default(cuid())
   email          String
