@@ -3,6 +3,11 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { createUserWithOrganization } from "@/lib/auth";
+import { createToken } from "@/lib/tokens";
+import { sendVerificationEmail } from "@/lib/email";
+import { resolveAppUrl } from "@/lib/url";
+
+const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
 const registerSchema = z.object({
   name: z.string().min(1).max(100),
@@ -35,6 +40,12 @@ export async function POST(request: Request) {
     name,
     password: hashed,
     skipDefaultOrg: !!pendingInvite,
+  });
+
+  const rawToken = await createToken(`verify:${email}`, VERIFY_TOKEN_TTL_MS);
+  await sendVerificationEmail({
+    to: email,
+    verifyUrl: `${await resolveAppUrl()}/verify-email/${rawToken}`,
   });
 
   return NextResponse.json({ ok: true });

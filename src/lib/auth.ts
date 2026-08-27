@@ -56,6 +56,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: user.name ?? undefined,
             image: user.image ?? undefined,
             skipDefaultOrg: !!pendingInvite,
+            emailVerified: new Date(),
           });
         }
       }
@@ -64,13 +65,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user }) {
       if (user?.email) {
         const dbUser = await prisma.user.findUnique({ where: { email: user.email } });
-        if (dbUser) token.userId = dbUser.id;
+        if (dbUser) {
+          token.userId = dbUser.id;
+          token.emailVerified = !!dbUser.emailVerified;
+        }
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user && token.userId) {
         session.user.id = token.userId as string;
+        session.user.isEmailVerified = !!token.emailVerified;
       }
       return session;
     },
@@ -83,6 +88,7 @@ export async function createUserWithOrganization(input: {
   password?: string;
   image?: string;
   skipDefaultOrg?: boolean;
+  emailVerified?: Date;
 }) {
   if (input.skipDefaultOrg) {
     return prisma.user.create({
@@ -91,6 +97,7 @@ export async function createUserWithOrganization(input: {
         name: input.name,
         password: input.password,
         image: input.image,
+        emailVerified: input.emailVerified,
       },
     });
   }
@@ -104,6 +111,7 @@ export async function createUserWithOrganization(input: {
       name: input.name,
       password: input.password,
       image: input.image,
+      emailVerified: input.emailVerified,
       memberships: {
         create: {
           role: "OWNER",

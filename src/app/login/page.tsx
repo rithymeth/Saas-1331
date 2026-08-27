@@ -14,6 +14,8 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const verified = searchParams.get("verified");
+  const reset = searchParams.get("reset");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -48,6 +50,17 @@ function LoginForm() {
         </p>
       </div>
 
+      {verified && (
+        <p className="rounded-md bg-green-50 px-3 py-2 text-center text-sm text-green-700">
+          Email verified — you can now log in.
+        </p>
+      )}
+      {reset && (
+        <p className="rounded-md bg-green-50 px-3 py-2 text-center text-sm text-green-700">
+          Password reset — log in with your new password.
+        </p>
+      )}
+
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
           <label htmlFor="email" className="text-sm font-medium">
@@ -64,9 +77,14 @@ function LoginForm() {
         </div>
 
         <div className="flex flex-col gap-1">
-          <label htmlFor="password" className="text-sm font-medium">
-            Password
-          </label>
+          <div className="flex items-center justify-between">
+            <label htmlFor="password" className="text-sm font-medium">
+              Password
+            </label>
+            <Link href="/forgot-password" className="text-xs text-gray-500 underline">
+              Forgot password?
+            </Link>
+          </div>
           <input
             id="password"
             type="password"
