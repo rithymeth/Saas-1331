@@ -68,8 +68,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (dbUser) {
           token.userId = dbUser.id;
           token.emailVerified = !!dbUser.emailVerified;
+          token.passwordChangedAt = dbUser.passwordChangedAt?.getTime() ?? null;
         }
+        return token;
       }
+
+      // On every later request, confirm the password hasn't changed since this
+      // token was issued — otherwise a stolen token would keep working even
+      // after the account owner resets their password to lock the thief out.
+      if (token.userId) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.userId as string },
+          select: { passwordChangedAt: true },
+        });
+        if (!dbUser) return null;
+
+        const currentChangedAt = dbUser.passwordChangedAt?.getTime() ?? null;
+        if (currentChangedAt !== (token.passwordChangedAt ?? null)) return null;
+      }
+
       return token;
     },
     async session({ session, token }) {

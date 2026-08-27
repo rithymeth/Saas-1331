@@ -22,7 +22,10 @@ async function resetPassword(formData: FormData) {
 
   const email = identifier.slice("pwreset:".length);
   const hashed = await bcrypt.hash(password, 12);
-  await prisma.user.update({ where: { email }, data: { password: hashed } });
+  await prisma.user.update({
+    where: { email },
+    data: { password: hashed, passwordChangedAt: new Date() },
+  });
 
   redirect("/login?reset=1");
 }
