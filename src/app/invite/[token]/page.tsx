@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { syncSeatCount } from "@/lib/seats";
 
 async function acceptInvite(formData: FormData) {
   "use server";
@@ -30,6 +31,7 @@ async function acceptInvite(formData: FormData) {
   });
 
   await prisma.invitation.delete({ where: { id: invitation.id } });
+  await syncSeatCount(invitation.organizationId);
 
   redirect("/dashboard");
 }

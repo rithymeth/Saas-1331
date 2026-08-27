@@ -31,6 +31,24 @@ async function inviteToOrg(formData: FormData) {
   revalidatePath(`/admin/organizations/${organizationId}`);
 }
 
+async function toggleSuspension(formData: FormData) {
+  "use server";
+
+  const session = await auth();
+  if (!session?.user || !isSuperAdmin(session.user.email)) redirect("/dashboard");
+
+  const organizationId = String(formData.get("organizationId") ?? "");
+  const suspend = formData.get("suspend") === "true";
+
+  await prisma.organization.update({
+    where: { id: organizationId },
+    data: { suspendedAt: suspend ? new Date() : null },
+  });
+
+  revalidatePath(`/admin/organizations/${organizationId}`);
+  revalidatePath("/admin");
+}
+
 export default async function AdminOrganizationDetailPage({
   params,
 }: {
@@ -50,11 +68,28 @@ export default async function AdminOrganizationDetailPage({
 
   return (
     <div className="flex max-w-2xl flex-col gap-10">
-      <div>
-        <h1 className="text-2xl font-semibold">{organization.name}</h1>
-        <p className="text-sm text-gray-500">
-          {organization.slug} · {organization.subscription?.status ?? "No subscription"}
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">{organization.name}</h1>
+          <p className="text-sm text-gray-500">
+            {organization.slug} · {organization.subscription?.status ?? "No subscription"}
+            {organization.suspendedAt && " · suspended"}
+          </p>
+        </div>
+        <form action={toggleSuspension}>
+          <input type="hidden" name="organizationId" value={organization.id} />
+          <input type="hidden" name="suspend" value={organization.suspendedAt ? "false" : "true"} />
+          <button
+            type="submit"
+            className={
+              organization.suspendedAt
+                ? "rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50"
+                : "rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
+            }
+          >
+            {organization.suspendedAt ? "Unsuspend" : "Suspend"}
+          </button>
+        </form>
       </div>
 
       <section className="flex flex-col gap-3">
