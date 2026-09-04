@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
@@ -187,12 +188,20 @@ export default async function ProjectBoardPage({ params }: { params: Promise<{ i
                         currentStatus={task.status}
                         action={updateTaskStatus}
                       />
-                      <form action={deleteTask}>
-                        <input type="hidden" name="taskId" value={task.id} />
-                        <button type="submit" className="text-xs text-red-600 hover:underline">
-                          Delete
-                        </button>
-                      </form>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/dashboard/projects/${project.id}/tasks/${task.id}/edit`}
+                          className="text-xs text-gray-500 hover:underline"
+                        >
+                          Edit
+                        </Link>
+                        <form action={deleteTask}>
+                          <input type="hidden" name="taskId" value={task.id} />
+                          <button type="submit" className="text-xs text-red-600 hover:underline">
+                            Delete
+                          </button>
+                        </form>
+                      </div>
                     </div>
                   </div>
                 ))}
