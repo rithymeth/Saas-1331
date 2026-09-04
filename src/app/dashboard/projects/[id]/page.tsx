@@ -1,11 +1,10 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getActiveMembership } from "@/lib/org";
 import { getProjectForOrg, getTaskForOrg } from "@/lib/projects";
-import { TaskStatusSelect } from "@/components/task-status-select";
+import { TaskBoard } from "@/components/task-board";
 
 async function createTask(formData: FormData) {
   "use server";
@@ -78,12 +77,6 @@ async function deleteTask(formData: FormData) {
   await prisma.task.delete({ where: { id: taskId } });
   revalidatePath(`/dashboard/projects/${task.projectId}`);
 }
-
-const COLUMNS = [
-  { status: "TODO", label: "Todo" },
-  { status: "IN_PROGRESS", label: "In Progress" },
-  { status: "DONE", label: "Done" },
-] as const;
 
 export default async function ProjectBoardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -159,61 +152,12 @@ export default async function ProjectBoardPage({ params }: { params: Promise<{ i
         </form>
       </section>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {COLUMNS.map((column) => (
-          <div key={column.status} className="flex flex-col gap-3">
-            <h2 className="text-sm font-medium text-gray-500">
-              {column.label} ·{" "}
-              {project.tasks.filter((t) => t.status === column.status).length}
-            </h2>
-            <div className="flex flex-col gap-2">
-              {project.tasks
-                .filter((task) => task.status === column.status)
-                .map((task) => (
-                  <div
-                    key={task.id}
-                    className="flex flex-col gap-2 rounded-md border border-gray-200 p-3"
-                  >
-                    <p className="text-sm font-medium">{task.title}</p>
-                    {task.description && (
-                      <p className="text-xs text-gray-600">{task.description}</p>
-                    )}
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                      {task.assignee && <span>{task.assignee.name ?? task.assignee.email}</span>}
-                      {task.dueDate && <span>Due {task.dueDate.toLocaleDateString()}</span>}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <TaskStatusSelect
-                        taskId={task.id}
-                        currentStatus={task.status}
-                        action={updateTaskStatus}
-                      />
-                      <div className="flex items-center gap-2">
-                        <Link
-                          href={`/dashboard/projects/${project.id}/tasks/${task.id}/edit`}
-                          className="text-xs text-gray-500 hover:underline"
-                        >
-                          Edit
-                        </Link>
-                        <form action={deleteTask}>
-                          <input type="hidden" name="taskId" value={task.id} />
-                          <button type="submit" className="text-xs text-red-600 hover:underline">
-                            Delete
-                          </button>
-                        </form>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              {project.tasks.filter((t) => t.status === column.status).length === 0 && (
-                <p className="rounded-md border border-dashed border-gray-200 px-3 py-6 text-center text-xs text-gray-400">
-                  No tasks
-                </p>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+      <TaskBoard
+        projectId={project.id}
+        tasks={project.tasks}
+        updateTaskStatus={updateTaskStatus}
+        deleteTask={deleteTask}
+      />
     </div>
   );
 }
