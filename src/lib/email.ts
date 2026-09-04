@@ -47,6 +47,29 @@ export async function sendPasswordResetEmail(input: { to: string; resetUrl: stri
   });
 }
 
+export async function sendTaskAssignedEmail(input: {
+  to: string;
+  taskTitle: string;
+  projectName: string;
+  taskUrl: string;
+  assignedByEmail: string;
+}) {
+  if (!resend) {
+    console.log(`[email] (RESEND_API_KEY not set) task assignment for ${input.to}: ${input.taskUrl}`);
+    return;
+  }
+
+  await resend.emails.send({
+    from,
+    to: input.to,
+    subject: `You've been assigned: ${input.taskTitle}`,
+    html: `
+      <p>${input.assignedByEmail} assigned you a task in <strong>${input.projectName}</strong>.</p>
+      <p><a href="${input.taskUrl}">${input.taskTitle}</a></p>
+    `,
+  });
+}
+
 export async function sendVerificationEmail(input: { to: string; verifyUrl: string }) {
   if (!resend) {
     console.log(`[email] (RESEND_API_KEY not set) verification for ${input.to}: ${input.verifyUrl}`);

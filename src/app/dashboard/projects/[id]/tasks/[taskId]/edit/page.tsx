@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getActiveMembership } from "@/lib/org";
 import { getProjectForOrg, getTaskForOrg } from "@/lib/projects";
+import { notifyTaskAssignment } from "@/lib/notifications";
 
 async function updateTask(formData: FormData) {
   "use server";
@@ -39,6 +40,18 @@ async function updateTask(formData: FormData) {
     where: { id: taskId },
     data: { title, description, assigneeId, dueDate, status: validStatus },
   });
+
+  if (assigneeId && assigneeId !== task.assigneeId) {
+    await notifyTaskAssignment({
+      assigneeId,
+      actorId: session.user.id,
+      actorEmail: session.user.email ?? "",
+      taskId: task.id,
+      taskTitle: title,
+      projectId: task.projectId,
+      projectName: task.project.name,
+    });
+  }
 
   revalidatePath(`/dashboard/projects/${task.projectId}`);
   redirect(`/dashboard/projects/${task.projectId}`);
