@@ -15,7 +15,7 @@ async function updateTask(formData: FormData) {
   if (!membership) redirect("/dashboard");
 
   const taskId = String(formData.get("taskId") ?? "");
-  const task = await getTaskForOrg(taskId, membership.organizationId);
+  const task = await getTaskForOrg(taskId, membership);
   if (!task) return;
 
   const title = String(formData.get("title") ?? "").trim();
@@ -57,7 +57,7 @@ export default async function EditTaskPage({
   const membership = await getActiveMembership(session.user.id);
   if (!membership) redirect("/dashboard");
 
-  const project = await getProjectForOrg(id, membership.organizationId);
+  const project = await getProjectForOrg(id, membership);
   if (!project) notFound();
 
   const task = project.tasks.find((t) => t.id === taskId);
