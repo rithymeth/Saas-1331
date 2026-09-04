@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getActiveMembership } from "@/lib/org";
+import { projectVisibilityFilter } from "@/lib/projects";
 
 async function createProject(formData: FormData) {
   "use server";
@@ -32,7 +33,10 @@ export default async function ProjectsPage() {
   if (!membership) redirect("/dashboard");
 
   const projects = await prisma.project.findMany({
-    where: { organizationId: membership.organizationId },
+    where: {
+      organizationId: membership.organizationId,
+      ...projectVisibilityFilter(membership.userId, membership.role),
+    },
     include: { _count: { select: { tasks: true } } },
     orderBy: { createdAt: "desc" },
   });

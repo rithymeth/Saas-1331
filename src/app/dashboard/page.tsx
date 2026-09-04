@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getActiveMembership } from "@/lib/org";
+import { projectVisibilityFilter } from "@/lib/projects";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -12,7 +13,10 @@ export default async function DashboardPage() {
 
   const projects = membership
     ? await prisma.project.findMany({
-        where: { organizationId: membership.organizationId },
+        where: {
+          organizationId: membership.organizationId,
+          ...projectVisibilityFilter(membership.userId, membership.role),
+        },
         include: { _count: { select: { tasks: { where: { status: { not: "DONE" } } } } } },
         orderBy: { updatedAt: "desc" },
         take: 5,
