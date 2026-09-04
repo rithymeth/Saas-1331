@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getActiveMembership } from "@/lib/org";
 import { getProjectForOrg, getTaskForOrg } from "@/lib/projects";
+import { notifyTaskAssignment } from "@/lib/notifications";
 import { TaskBoard } from "@/components/task-board";
 
 async function createTask(formData: FormData) {
@@ -34,9 +35,21 @@ async function createTask(formData: FormData) {
     if (!isMember) return;
   }
 
-  await prisma.task.create({
+  const task = await prisma.task.create({
     data: { projectId, title, description, assigneeId, dueDate },
   });
+
+  if (assigneeId) {
+    await notifyTaskAssignment({
+      assigneeId,
+      actorId: session.user.id,
+      actorEmail: session.user.email ?? "",
+      taskId: task.id,
+      taskTitle: task.title,
+      projectId,
+      projectName: project.name,
+    });
+  }
 
   revalidatePath(`/dashboard/projects/${projectId}`);
 }
