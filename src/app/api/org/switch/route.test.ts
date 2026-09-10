@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const auth = vi.fn();
-const findUnique = vi.fn();
-const setCookie = vi.fn();
+const { auth, findUnique, setCookie } = vi.hoisted(() => ({
+  auth: vi.fn(),
+  findUnique: vi.fn(),
+  setCookie: vi.fn(),
+}));
 
 vi.mock("@/lib/auth", () => ({ auth }));
 vi.mock("@/lib/prisma", () => ({

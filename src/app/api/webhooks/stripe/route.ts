@@ -17,13 +17,15 @@ const STATUS_MAP: Record<Stripe.Subscription.Status, SubscriptionStatus> = {
 };
 
 async function syncSubscription(subscription: Stripe.Subscription) {
+  const currentPeriodEnd = subscription.items.data[0]?.current_period_end;
+
   await prisma.subscription.updateMany({
     where: { stripeCustomerId: subscription.customer as string },
     data: {
       stripeSubscriptionId: subscription.id,
       stripePriceId: subscription.items.data[0]?.price.id,
       status: STATUS_MAP[subscription.status],
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      currentPeriodEnd: currentPeriodEnd ? new Date(currentPeriodEnd * 1000) : null,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
     },
   });

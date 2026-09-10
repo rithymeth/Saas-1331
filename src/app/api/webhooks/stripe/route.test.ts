@@ -1,9 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const getStripeWebhookSecret = vi.fn();
-const constructEvent = vi.fn();
-const retrieveSubscription = vi.fn();
-const updateMany = vi.fn();
+const { getStripeWebhookSecret, constructEvent, retrieveSubscription, updateMany } = vi.hoisted(
+  () => ({
+    getStripeWebhookSecret: vi.fn(),
+    constructEvent: vi.fn(),
+    retrieveSubscription: vi.fn(),
+    updateMany: vi.fn(),
+  })
+);
 
 vi.mock("@/lib/env", () => ({ getStripeWebhookSecret }));
 vi.mock("@/lib/prisma", () => ({
@@ -67,9 +71,8 @@ describe("POST /api/webhooks/stripe", () => {
     retrieveSubscription.mockResolvedValue({
       id: "sub_123",
       customer: "cus_123",
-      items: { data: [{ price: { id: "price_pro" } }] },
+      items: { data: [{ price: { id: "price_pro" }, current_period_end: 1_725_897_600 }] },
       status: "active",
-      current_period_end: 1_725_897_600,
       cancel_at_period_end: false,
     });
     updateMany.mockResolvedValue({ count: 1 });
