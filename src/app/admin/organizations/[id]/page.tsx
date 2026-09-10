@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { isSuperAdmin } from "@/lib/admin";
+import { deleteOrganization } from "@/lib/organizations";
 import { prisma } from "@/lib/prisma";
 import { createInvitation } from "@/lib/invitations";
 import { resolveAppUrl } from "@/lib/url";
@@ -49,12 +50,40 @@ async function toggleSuspension(formData: FormData) {
   revalidatePath("/admin");
 }
 
+async function deleteOrganizationAction(formData: FormData) {
+  "use server";
+
+  const session = await auth();
+  if (!session?.user || !isSuperAdmin(session.user.email)) redirect("/dashboard");
+
+  const organizationId = String(formData.get("organizationId") ?? "");
+  const confirmation = String(formData.get("confirmation") ?? "");
+  const result = await deleteOrganization({ organizationId, confirmation });
+
+  if (!result.ok) {
+    redirect(`/admin/organizations/${organizationId}?deleteError=${result.reason}`);
+  }
+
+  revalidatePath("/admin");
+  redirect(`/admin?deleted=${encodeURIComponent(result.slug)}`);
+}
+
+const DELETE_ERROR_MESSAGE: Record<string, string> = {
+  confirmation_mismatch: "The confirmation value must exactly match the organization slug.",
+  must_suspend_first: "Suspend the organization before deleting it.",
+  active_subscription: "Cancel the organization's active billing before deleting it.",
+  not_found: "That organization no longer exists.",
+};
+
 export default async function AdminOrganizationDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ deleteError?: string }>;
 }) {
   const { id } = await params;
+  const { deleteError } = await searchParams;
 
   const organization = await prisma.organization.findUnique({
     where: { id },
@@ -91,6 +120,12 @@ export default async function AdminOrganizationDetailPage({
           </button>
         </form>
       </div>
+
+      {deleteError && DELETE_ERROR_MESSAGE[deleteError] && (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          {DELETE_ERROR_MESSAGE[deleteError]}
+        </p>
+      )}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-gray-500">Members</h2>
@@ -156,6 +191,42 @@ export default async function AdminOrganizationDetailPage({
           </div>
         </section>
       )}
+
+      <section className="flex flex-col gap-3 rounded-md border border-red-200 p-4">
+        <div>
+          <h2 className="text-sm font-medium text-red-700">Danger zone</h2>
+          <p className="text-sm text-gray-600">
+            Deleting an organization permanently removes its members, invites, projects, tasks,
+            API keys, and local billing records.
+          </p>
+        </div>
+        <p className="text-xs text-gray-500">
+          Suspend the organization first, then type <code>{organization.slug}</code> to confirm.
+          Active or delinquent subscriptions must be resolved before deletion.
+        </p>
+        <form action={deleteOrganizationAction} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <input type="hidden" name="organizationId" value={organization.id} />
+          <div className="flex-1">
+            <label htmlFor="confirmation" className="mb-1 block text-xs text-gray-500">
+              Confirm slug
+            </label>
+            <input
+              id="confirmation"
+              name="confirmation"
+              required
+              placeholder={organization.slug}
+              className="w-full rounded-md border border-red-300 px-3 py-2 text-sm outline-none focus:border-red-600"
+            />
+          </div>
+          <button
+            type="submit"
+            className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={!organization.suspendedAt}
+          >
+            Delete organization
+          </button>
+        </form>
+      </section>
     </div>
   );
 }

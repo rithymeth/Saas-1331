@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { resolveAppUrl } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { getActiveMembership } from "@/lib/org";
 import { stripe } from "@/lib/stripe";
 import { PLANS, getPlan } from "@/lib/plans";
-
-function appUrl(request: Request) {
-  return process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
-}
 
 export async function POST(request: Request) {
   if (!stripe || PLANS.length === 0) {
@@ -51,7 +48,7 @@ export async function POST(request: Request) {
     where: { organizationId: membership.organizationId },
   });
 
-  const base = appUrl(request);
+  const base = await resolveAppUrl(request);
   const checkoutSession = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customerId,

@@ -1,12 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { resolveAppUrl } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { getActiveMembership } from "@/lib/org";
 import { stripe } from "@/lib/stripe";
-
-function appUrl(request: Request) {
-  return process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
-}
 
 export async function POST(request: Request) {
   if (!stripe) {
@@ -32,7 +29,7 @@ export async function POST(request: Request) {
 
   const portalSession = await stripe.billingPortal.sessions.create({
     customer: subscription.stripeCustomerId,
-    return_url: `${appUrl(request)}/dashboard/billing`,
+    return_url: `${await resolveAppUrl(request)}/dashboard/billing`,
   });
 
   return NextResponse.json({ url: portalSession.url });

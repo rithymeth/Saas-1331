@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { SubscriptionStatus } from "@prisma/client";
+import { getStripeWebhookSecret } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 
@@ -29,7 +30,9 @@ async function syncSubscription(subscription: Stripe.Subscription) {
 }
 
 export async function POST(request: Request) {
-  if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) {
+  const webhookSecret = getStripeWebhookSecret();
+
+  if (!stripe || !webhookSecret) {
     return NextResponse.json({ error: "Billing is not configured" }, { status: 501 });
   }
 
@@ -38,7 +41,7 @@ export async function POST(request: Request) {
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(body, signature ?? "", process.env.STRIPE_WEBHOOK_SECRET);
+    event = stripe.webhooks.constructEvent(body, signature ?? "", webhookSecret);
   } catch {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }

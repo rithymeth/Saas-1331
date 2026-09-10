@@ -1,5 +1,6 @@
 import Stripe from "stripe";
+import { getStripeSecretKey } from "@/lib/env";
 
-export const stripe = process.env.STRIPE_SECRET_KEY
-  ? new Stripe(process.env.STRIPE_SECRET_KEY)
-  : null;
+const stripeSecretKey = getStripeSecretKey();
+
+export const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;

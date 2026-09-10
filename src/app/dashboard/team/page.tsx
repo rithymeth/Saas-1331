@@ -1,11 +1,10 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { resolveAppUrl } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { getActiveMembership } from "@/lib/org";
 import { createInvitation } from "@/lib/invitations";
-import { resolveAppUrl } from "@/lib/url";
 import { syncSeatCount } from "@/lib/seats";
 import { MemberRoleSelect } from "@/components/member-role-select";
 
@@ -98,7 +97,7 @@ export default async function TeamPage() {
   const membership = await getActiveMembership(session.user.id);
   if (!membership) redirect("/dashboard");
 
-  const [members, invitations, host] = await Promise.all([
+  const [members, invitations, appUrl] = await Promise.all([
     prisma.organizationMember.findMany({
       where: { organizationId: membership.organizationId },
       include: { user: true },
@@ -108,12 +107,11 @@ export default async function TeamPage() {
       where: { organizationId: membership.organizationId },
       orderBy: { createdAt: "desc" },
     }),
-    headers().then((h) => h.get("host")),
+    resolveAppUrl(),
   ]);
 
   const canManage = membership.role !== "MEMBER";
   const isOwner = membership.role === "OWNER";
-  const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
 
   return (
     <div className="flex max-w-2xl flex-col gap-10">
@@ -210,7 +208,7 @@ export default async function TeamPage() {
                   </div>
                   {!expired && (
                     <code className="truncate rounded bg-gray-50 px-2 py-1 text-xs text-gray-600">
-                      {`${protocol}://${host}/invite/${invite.token}`}
+                      {`${appUrl}/invite/${invite.token}`}
                     </code>
                   )}
                 </div>
@@ -218,7 +216,7 @@ export default async function TeamPage() {
             })}
           </div>
           <p className="text-xs text-gray-500">
-            No email sending is wired up yet — copy the link above and send it to the invitee directly.
+            Invite emails are sent when Resend is configured; otherwise you can copy the link above.
           </p>
         </section>
       )}
