@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 
-export default async function AdminOrganizationsPage() {
+export default async function AdminOrganizationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ deleted?: string }>;
+}) {
+  const { deleted } = await searchParams;
   const organizations = await prisma.organization.findMany({
     include: {
       _count: { select: { members: true } },
@@ -13,6 +18,11 @@ export default async function AdminOrganizationsPage() {
   return (
     <div className="flex max-w-4xl flex-col gap-6">
       <h1 className="text-2xl font-semibold">Organizations</h1>
+      {deleted && (
+        <p className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">
+          Deleted organization <code>{deleted}</code>.
+        </p>
+      )}
       <p className="text-sm text-gray-500">{organizations.length} total</p>
 
       <div className="flex flex-col divide-y divide-gray-200 rounded-md border border-gray-200">

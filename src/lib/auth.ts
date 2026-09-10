@@ -3,9 +3,13 @@ import type { Provider } from "next-auth/providers";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
+import { getGoogleProviderConfig, requireAuthSecret } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { jwtCallback } from "@/lib/session";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+
+const authSecret = requireAuthSecret();
+const googleProviderConfig = getGoogleProviderConfig();
 
 const providers: Provider[] = [
   Credentials({
@@ -33,16 +37,17 @@ const providers: Provider[] = [
   }),
 ];
 
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+if (googleProviderConfig) {
   providers.push(
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      clientId: googleProviderConfig.clientId,
+      clientSecret: googleProviderConfig.clientSecret,
     })
   );
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  secret: authSecret,
   providers,
   session: { strategy: "jwt" },
   pages: {

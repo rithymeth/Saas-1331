@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { SubscriptionStatus } from "@prisma/client";
+import { getStripeWebhookSecret } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 
@@ -16,20 +17,24 @@ const STATUS_MAP: Record<Stripe.Subscription.Status, SubscriptionStatus> = {
 };
 
 async function syncSubscription(subscription: Stripe.Subscription) {
+  const currentPeriodEnd = subscription.items.data[0]?.current_period_end;
+
   await prisma.subscription.updateMany({
     where: { stripeCustomerId: subscription.customer as string },
     data: {
       stripeSubscriptionId: subscription.id,
       stripePriceId: subscription.items.data[0]?.price.id,
       status: STATUS_MAP[subscription.status],
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      currentPeriodEnd: currentPeriodEnd ? new Date(currentPeriodEnd * 1000) : null,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
     },
   });
 }
 
 export async function POST(request: Request) {
-  if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) {
+  const webhookSecret = getStripeWebhookSecret();
+
+  if (!stripe || !webhookSecret) {
     return NextResponse.json({ error: "Billing is not configured" }, { status: 501 });
   }
 
@@ -38,7 +43,7 @@ export async function POST(request: Request) {
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(body, signature ?? "", process.env.STRIPE_WEBHOOK_SECRET);
+    event = stripe.webhooks.constructEvent(body, signature ?? "", webhookSecret);
   } catch {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }

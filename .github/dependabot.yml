@@ -1,0 +1,39 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      framework-and-auth:
+        patterns:
+          - "next"
+          - "next-auth"
+          - "react"
+          - "react-dom"
+          - "eslint-config-next"
+          - "@types/react"
+          - "@types/react-dom"
+      database:
+        patterns:
+          - "prisma"
+          - "@prisma/client"
+      billing-and-email:
+        patterns:
+          - "stripe"
+          - "resend"
+          - "zod"
+      dev-tooling:
+        patterns:
+          - "@types/node"
+          - "dotenv"
+          - "eslint"
+          - "tailwindcss"
+          - "@tailwindcss/postcss"
+          - "typescript"
+          - "vitest"
+    open-pull-requests-limit: 10
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

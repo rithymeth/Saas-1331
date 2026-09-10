@@ -1,7 +1,9 @@
 import { Resend } from "resend";
+import { getEmailConfig } from "@/lib/env";
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-const from = process.env.EMAIL_FROM ?? "onboarding@resend.dev";
+const emailConfig = getEmailConfig();
+const resend = emailConfig.apiKey ? new Resend(emailConfig.apiKey) : null;
+const from = emailConfig.from;
 
 /**
  * No-op (logs only) when RESEND_API_KEY isn't set, so invites/dev work without an email provider.
