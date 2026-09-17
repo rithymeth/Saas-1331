@@ -12,6 +12,7 @@ type Task = {
   status: TaskStatus;
   dueDate: Date | null;
   assignee: { name: string | null; email: string } | null;
+  labels: { label: { id: string; name: string; color: string } }[];
 };
 
 type Props = {
@@ -80,6 +81,19 @@ export function TaskBoard({ projectId, tasks, updateTaskStatus, deleteTask }: Pr
                   className="flex cursor-grab flex-col gap-2 rounded-md border border-gray-200 p-3 active:cursor-grabbing"
                 >
                   <p className="text-sm font-medium">{task.title}</p>
+                  {task.labels.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {task.labels.map(({ label }) => (
+                        <span
+                          key={label.id}
+                          className="rounded-full px-2 py-0.5 text-[10px] font-medium text-white"
+                          style={{ backgroundColor: label.color }}
+                        >
+                          {label.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   {task.description && (
                     <p className="text-xs text-gray-600">{task.description}</p>
                   )}
