@@ -24,7 +24,7 @@ jobs:
 
     env:
       AUTH_SECRET: ci-only-secret-not-used-for-anything-real
-      DATABASE_URL: ******localhost:5432/saas
+      DATABASE_URL: postgresql://saas:saas@localhost:5432/saas
 
     services:
       postgres:
@@ -62,7 +62,7 @@ jobs:
 
     env:
       AUTH_SECRET: ci-only-secret-not-used-for-anything-real
-      DATABASE_URL: ******localhost:5432/saas
+      DATABASE_URL: postgresql://saas:saas@localhost:5432/saas
 
     services:
       postgres:
@@ -99,7 +99,7 @@ jobs:
 
     env:
       AUTH_SECRET: ci-only-secret-not-used-for-anything-real
-      DATABASE_URL: ******localhost:5432/saas
+      DATABASE_URL: postgresql://saas:saas@localhost:5432/saas
 
     steps:
       - uses: actions/checkout@v4

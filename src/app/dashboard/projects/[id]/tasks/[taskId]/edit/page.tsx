@@ -57,6 +57,53 @@ async function updateTask(formData: FormData) {
   redirect(`/dashboard/projects/${task.projectId}`);
 }
 
+async function addComment(formData: FormData) {
+  "use server";
+
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  const membership = await getActiveMembership(session.user.id);
+  if (!membership) redirect("/dashboard");
+
+  const taskId = String(formData.get("taskId") ?? "");
+  const task = await getTaskForOrg(taskId, membership);
+  if (!task) return;
+
+  const body = String(formData.get("body") ?? "").trim();
+  if (!body) return;
+
+  await prisma.taskComment.create({
+    data: { taskId, authorId: session.user.id, body },
+  });
+
+  revalidatePath(`/dashboard/projects/${task.projectId}/tasks/${taskId}/edit`);
+}
+
+async function deleteComment(formData: FormData) {
+  "use server";
+
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  const membership = await getActiveMembership(session.user.id);
+  if (!membership) redirect("/dashboard");
+
+  const commentId = String(formData.get("commentId") ?? "");
+  const comment = await prisma.taskComment.findUnique({ where: { id: commentId } });
+  if (!comment || comment.authorId !== session.user.id) return;
+
+  // Re-derive the task through getTaskForOrg rather than trusting the
+  // comment's own taskId/org link, so a comment somehow left behind on a
+  // task the requester can no longer see still can't be deleted from here.
+  const task = await getTaskForOrg(comment.taskId, membership);
+  if (!task) return;
+
+  await prisma.taskComment.delete({ where: { id: commentId } });
+
+  revalidatePath(`/dashboard/projects/${task.projectId}/tasks/${task.id}/edit`);
+}
+
 export default async function EditTaskPage({
   params,
 }: {
@@ -79,6 +126,12 @@ export default async function EditTaskPage({
   const members = await prisma.organizationMember.findMany({
     where: { organizationId: membership.organizationId },
     include: { user: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const comments = await prisma.taskComment.findMany({
+    where: { taskId: task.id },
+    include: { author: true },
     orderBy: { createdAt: "asc" },
   });
 
@@ -177,6 +230,50 @@ export default async function EditTaskPage({
           </a>
         </div>
       </form>
+
+      <section className="flex flex-col gap-3 border-t border-gray-200 pt-6">
+        <h2 className="text-sm font-medium text-gray-500">Comments</h2>
+
+        <div className="flex flex-col gap-3">
+          {comments.map((comment) => (
+            <div key={comment.id} className="flex flex-col gap-1 rounded-md border border-gray-200 p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-gray-700">
+                  {comment.author.name ?? comment.author.email}
+                </span>
+                <span className="text-xs text-gray-400">{comment.createdAt.toLocaleString()}</span>
+              </div>
+              <p className="text-sm whitespace-pre-wrap">{comment.body}</p>
+              {comment.authorId === session.user.id && (
+                <form action={deleteComment} className="self-end">
+                  <input type="hidden" name="commentId" value={comment.id} />
+                  <button type="submit" className="text-xs text-red-600 hover:underline">
+                    Delete
+                  </button>
+                </form>
+              )}
+            </div>
+          ))}
+          {comments.length === 0 && <p className="text-xs text-gray-400">No comments yet.</p>}
+        </div>
+
+        <form action={addComment} className="flex flex-col gap-2">
+          <input type="hidden" name="taskId" value={task.id} />
+          <textarea
+            name="body"
+            required
+            rows={3}
+            placeholder="Add a comment…"
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900"
+          />
+          <button
+            type="submit"
+            className="w-fit rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+          >
+            Post comment
+          </button>
+        </form>
+      </section>
     </div>
   );
 }
