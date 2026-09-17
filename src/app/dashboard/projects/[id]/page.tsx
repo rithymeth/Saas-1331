@@ -27,6 +27,11 @@ async function createTask(formData: FormData) {
   const assigneeId = String(formData.get("assigneeId") ?? "") || null;
   const dueDateRaw = String(formData.get("dueDate") ?? "");
   const dueDate = dueDateRaw ? new Date(dueDateRaw) : null;
+  const priorityRaw = formData.get("priority");
+  const priority =
+    priorityRaw === "LOW" || priorityRaw === "MEDIUM" || priorityRaw === "HIGH" || priorityRaw === "URGENT"
+      ? priorityRaw
+      : "MEDIUM";
 
   if (assigneeId) {
     const isMember = await prisma.organizationMember.findUnique({
@@ -36,7 +41,7 @@ async function createTask(formData: FormData) {
   }
 
   const task = await prisma.task.create({
-    data: { projectId, title, description, assigneeId, dueDate },
+    data: { projectId, title, description, assigneeId, dueDate, priority },
   });
 
   if (assigneeId) {
@@ -232,6 +237,19 @@ export default async function ProjectBoardPage({ params }: { params: Promise<{ i
               name="dueDate"
               className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900"
             />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-gray-500">Priority</label>
+            <select
+              name="priority"
+              defaultValue="MEDIUM"
+              className="rounded-md border border-gray-300 px-2 py-2 text-sm"
+            >
+              <option value="LOW">Low</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="HIGH">High</option>
+              <option value="URGENT">Urgent</option>
+            </select>
           </div>
           <button
             type="submit"

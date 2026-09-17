@@ -28,6 +28,11 @@ async function updateTask(formData: FormData) {
   const dueDate = dueDateRaw ? new Date(dueDateRaw) : null;
   const status = formData.get("status");
   const validStatus = status === "TODO" || status === "IN_PROGRESS" || status === "DONE" ? status : task.status;
+  const priority = formData.get("priority");
+  const validPriority =
+    priority === "LOW" || priority === "MEDIUM" || priority === "HIGH" || priority === "URGENT"
+      ? priority
+      : task.priority;
 
   if (assigneeId) {
     const isMember = await prisma.organizationMember.findUnique({
@@ -38,7 +43,7 @@ async function updateTask(formData: FormData) {
 
   await prisma.task.update({
     where: { id: taskId },
-    data: { title, description, assigneeId, dueDate, status: validStatus },
+    data: { title, description, assigneeId, dueDate, status: validStatus, priority: validPriority },
   });
 
   const selectedLabelIds = formData.getAll("labelIds").map(String);
@@ -198,6 +203,23 @@ export default async function EditTaskPage({
             <option value="TODO">Todo</option>
             <option value="IN_PROGRESS">In Progress</option>
             <option value="DONE">Done</option>
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="priority" className="text-sm font-medium">
+            Priority
+          </label>
+          <select
+            id="priority"
+            name="priority"
+            defaultValue={task.priority}
+            className="rounded-md border border-gray-300 px-2 py-2 text-sm"
+          >
+            <option value="LOW">Low</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="HIGH">High</option>
+            <option value="URGENT">Urgent</option>
           </select>
         </div>
 
