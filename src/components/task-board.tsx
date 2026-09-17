@@ -4,12 +4,14 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 
 type TaskStatus = "TODO" | "IN_PROGRESS" | "DONE";
+type TaskPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
 type Task = {
   id: string;
   title: string;
   description: string | null;
   status: TaskStatus;
+  priority: TaskPriority;
   dueDate: Date | null;
   assignee: { name: string | null; email: string } | null;
   labels: { label: { id: string; name: string; color: string } }[];
@@ -27,6 +29,20 @@ const COLUMNS: { status: TaskStatus; label: string }[] = [
   { status: "IN_PROGRESS", label: "In Progress" },
   { status: "DONE", label: "Done" },
 ];
+
+const PRIORITY_RANK: Record<TaskPriority, number> = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+const PRIORITY_STYLE: Record<TaskPriority, string> = {
+  URGENT: "bg-red-100 text-red-700",
+  HIGH: "bg-orange-100 text-orange-700",
+  MEDIUM: "bg-gray-100 text-gray-600",
+  LOW: "bg-gray-50 text-gray-400",
+};
+const PRIORITY_LABEL: Record<TaskPriority, string> = {
+  URGENT: "Urgent",
+  HIGH: "High",
+  MEDIUM: "Medium",
+  LOW: "Low",
+};
 
 export function TaskBoard({ projectId, tasks, updateTaskStatus, deleteTask }: Props) {
   const [, startTransition] = useTransition();
@@ -118,6 +134,8 @@ export function TaskBoard({ projectId, tasks, updateTaskStatus, deleteTask }: Pr
           >
             {visibleTasks
               .filter((task) => task.status === column.status)
+              .slice()
+              .sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority])
               .map((task) => (
                 <div
                   key={task.id}
@@ -129,7 +147,14 @@ export function TaskBoard({ projectId, tasks, updateTaskStatus, deleteTask }: Pr
                   }}
                   className="flex cursor-grab flex-col gap-2 rounded-md border border-gray-200 p-3 active:cursor-grabbing"
                 >
-                  <p className="text-sm font-medium">{task.title}</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-medium">{task.title}</p>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${PRIORITY_STYLE[task.priority]}`}
+                    >
+                      {PRIORITY_LABEL[task.priority]}
+                    </span>
+                  </div>
                   {task.labels.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {task.labels.map(({ label }) => (
