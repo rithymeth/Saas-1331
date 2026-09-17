@@ -83,6 +83,9 @@ export default async function DashboardLayout({
               <Link href="/dashboard/projects" className="rounded-md px-3 py-2 hover:bg-gray-100">
                 Projects
               </Link>
+              <Link href="/dashboard/labels" className="rounded-md px-3 py-2 hover:bg-gray-100">
+                Labels
+              </Link>
               <Link href="/dashboard/team" className="rounded-md px-3 py-2 hover:bg-gray-100">
                 Team
               </Link>

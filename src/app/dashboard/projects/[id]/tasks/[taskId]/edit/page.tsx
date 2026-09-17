@@ -41,6 +41,18 @@ async function updateTask(formData: FormData) {
     data: { title, description, assigneeId, dueDate, status: validStatus },
   });
 
+  const selectedLabelIds = formData.getAll("labelIds").map(String);
+  const validLabels = await prisma.label.findMany({
+    where: { organizationId: membership.organizationId, id: { in: selectedLabelIds } },
+    select: { id: true },
+  });
+  await prisma.$transaction([
+    prisma.taskLabel.deleteMany({ where: { taskId } }),
+    ...(validLabels.length > 0
+      ? [prisma.taskLabel.createMany({ data: validLabels.map((l) => ({ taskId, labelId: l.id })) })]
+      : []),
+  ]);
+
   if (assigneeId && assigneeId !== task.assigneeId) {
     await notifyTaskAssignment({
       assigneeId,
@@ -135,6 +147,12 @@ export default async function EditTaskPage({
     orderBy: { createdAt: "asc" },
   });
 
+  const orgLabels = await prisma.label.findMany({
+    where: { organizationId: membership.organizationId },
+    orderBy: { name: "asc" },
+  });
+  const taskLabelIds = new Set(task.labels.map((tl) => tl.labelId));
+
   return (
     <div className="flex max-w-md flex-col gap-6">
       <h1 className="text-2xl font-semibold">Edit task</h1>
@@ -214,6 +232,29 @@ export default async function EditTaskPage({
             className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900"
           />
         </div>
+
+        {orgLabels.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-medium">Labels</span>
+            <div className="flex flex-wrap gap-3">
+              {orgLabels.map((label) => (
+                <label key={label.id} className="flex items-center gap-1.5 text-sm">
+                  <input
+                    type="checkbox"
+                    name="labelIds"
+                    value={label.id}
+                    defaultChecked={taskLabelIds.has(label.id)}
+                  />
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-full"
+                    style={{ backgroundColor: label.color }}
+                  />
+                  {label.name}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-2">
           <button
