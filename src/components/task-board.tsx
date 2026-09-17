@@ -173,7 +173,14 @@ export function TaskBoard({ projectId, tasks, updateTaskStatus, deleteTask }: Pr
                   )}
                   <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
                     {task.assignee && <span>{task.assignee.name ?? task.assignee.email}</span>}
-                    {task.dueDate && <span>Due {task.dueDate.toLocaleDateString()}</span>}
+                    {task.dueDate &&
+                      (task.status !== "DONE" && task.dueDate.getTime() < Date.now() ? (
+                        <span className="font-medium text-red-600">
+                          Overdue · was due {task.dueDate.toLocaleDateString()}
+                        </span>
+                      ) : (
+                        <span>Due {task.dueDate.toLocaleDateString()}</span>
+                      ))}
                   </div>
                   <div className="flex items-center justify-between">
                     <select
